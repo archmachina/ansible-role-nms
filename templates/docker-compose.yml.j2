@@ -1,0 +1,106 @@
+version: "3.9"
+
+services:
+  librenms_db:
+    build:
+      context: ./mariadb
+    container_name: librenms_db
+    command:
+      - "mysqld"
+      - "--innodb-file-per-table=1"
+      - "--lower-case-table-names=0"
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+    volumes:
+      - "{{ nms_data_librenms_db }}:/var/lib/mysql"
+    environment:
+      - "TZ={{ nms_timezone }}"
+      - "PUID={{ nms_user_id }}"
+      - "PGID={{ nms_group_id }}"
+      - "MYSQL_DATABASE={{ nms_librenms_mysql_database }}"
+      - "MYSQL_USER={{ nms_librenms_mysql_user }}"
+      - "MYSQL_PASSWORD={{ nms_librenms_mysql_password }}"
+      - "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 10s
+    user: "{{ nms_user_id }}"
+
+  librenms_redis:
+    build:
+      context: ./redis
+    container_name: librenms_redis
+    environment:
+      - "TZ={{ nms_timezone }}"
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  librenms_main:
+    build:
+      context: ./librenms
+    container_name: librenms
+    hostname: librenms
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    ports:
+      - target: 8000
+        published: 8000
+        protocol: tcp
+    depends_on:
+      - librenms_db
+      - librenms_redis
+    volumes:
+      - "{{ nms_data_librenms_data }}:/data"
+      - "{{ nms_config_dir }}/librenms_config.php:/data/config/librenms_config.php"
+    environment:
+      - "TZ={{ nms_timezone }}"
+      - "PUID={{ nms_user_id }}"
+      - "PGID={{ nms_group_id }}"
+      - "DB_HOST=librenms_db"
+      - "DB_NAME={{ nms_librenms_mysql_database }}"
+      - "DB_USER={{ nms_librenms_mysql_user }}"
+      - "DB_PASSWORD={{ nms_librenms_mysql_password }}"
+      - "DB_TIMEOUT=60"
+    labels:
+      nms.librenms.additional_config.md5sum: "{{ nms_librenms_additional_config_hash.stat.checksum }}"
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 10s
+
+  librenms_dispatcher:
+    build:
+      context: ./librenms
+    container_name: librenms_dispatcher
+    hostname: librenms-dispatcher
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      - librenms_main
+      - librenms_redis
+    volumes:
+      - "{{ nms_data_librenms_data }}:/data"
+      - "{{ nms_config_dir }}/librenms_config.php:/data/config/librenms_config.php"
+    environment:
+      - "TZ={{ nms_timezone }}"
+      - "PUID={{ nms_user_id }}"
+      - "PGID={{ nms_group_id }}"
+      - "DB_HOST=librenms_db"
+      - "DB_NAME={{ nms_librenms_mysql_database }}"
+      - "DB_USER={{ nms_librenms_mysql_user }}"
+      - "DB_PASSWORD={{ nms_librenms_mysql_password }}"
+      - "DB_TIMEOUT=60"
+      - "DISPATCHER_NODE_ID=dispatcher1"
+      - "SIDECAR_DISPATCHER=1"
+      - "REDIS_HOST=librenms_redis"
+    labels:
+      nms.librenms.additional_config.md5sum: "{{ nms_librenms_additional_config_hash.stat.checksum }}"
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 10s

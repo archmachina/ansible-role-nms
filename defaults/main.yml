@@ -1,0 +1,49 @@
+---
+
+nms_librenms_env_common:
+  TZ: "{{ nms_timezone }}"
+  PUID: "{{ nms_user_id }}"
+  PGID: "{{ nms_group_id }}"
+
+nms_librenms_env_mysql:
+  MYSQL_DATABASE: "{{ nms_librenms_mysql_database }}"
+  MYSQL_USER: "{{ nms_librenms_mysql_user }}"
+  MYSQL_PASSWORD: "{{ nms_librenms_mysql_password }}"
+  MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+nms_librenms_env_proc:
+  MEMORY_LIMIT: 256M
+  MAX_INPUT_VARS: 1000
+  UPLOAD_MAX_SIZE: 16M
+  OPCACHE_MEM_SIZE: 128
+  REAL_IP_FROM: 0.0.0.0/32
+  REAL_IP_HEADER: X-Forwarded-For
+  LOG_IP_VAR: remote_addr
+
+  CACHE_DRIVER: redis
+  SESSION_DRIVER: redis
+  REDIS_HOST: redis
+
+  LIBRENMS_SNMP_COMMUNITY: "{{ nms_snmp_community }}"
+
+  LIBRENMS_WEATHERMAP: "{{ nms_weathermap_enable }}"
+  LIBRENMS_WEATHERMAP_SCHEDULE: "*/5 * * * *"
+
+nms_librenms_additional_config: ""
+
+nms_weathermap_enable: 'false'
+nms_snmp_community: public
+nms_timezone: UTC
+
+nms_username: "nms"
+
+nms_librenms_mysql_database: "librenms"
+nms_librenms_mysql_user: "librenms"
+# nms_librenms_mysql_password: ""
+
+nms_deploy_name: "nms"
+
+# nms_data_librenms_db: "/volume1/librenms_db"
+# nms_data_librenms_data: "/volume1/librenms_data"
+
+nms_config_dir: /etc/nms/

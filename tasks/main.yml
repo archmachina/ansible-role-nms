@@ -1,0 +1,87 @@
+---
+
+- name: NMS User
+  user:
+    state: present
+    name: "{{ nms_username }}"
+  register: nms_user_state
+
+- name: Record NMS IDs
+  set_fact:
+    nms_user_id: "{{ nms_user_state.uid }}"
+    nms_group_id: "{{ nms_user_state.group }}"
+
+- name: NMS data directories
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0770"
+  loop:
+    - "{{ nms_data_librenms_data }}"
+    - "{{ nms_data_librenms_db }}"
+
+- name: Compose directory
+  file:
+    path: "{{ nms_config_dir }}/compose"
+    state: directory
+    mode: "0700"
+
+- name: Copy compose files
+  copy:
+    src: compose/
+    dest: "{{ nms_config_dir }}/compose"
+    mode: "0600"
+
+- name: Copy librenms additional config
+  copy:
+    content: |
+      <?php
+      {{ nms_librenms_additional_config }}
+      ?>
+    dest: "{{ nms_config_dir }}/librenms_config.php"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+
+- block:
+    - name: Validate additional config
+      docker_container:
+        name: "librenms_cfg_check_{{ ansible_date_time.epoch }}"
+        image: php:latest
+        detach: false
+        # use the effective user id to make working with volume mounts and permissions easier
+        user: "{{ ansible_effective_user_id }}"
+        state: started
+        cleanup: true
+        entrypoint: "/usr/local/bin/php"
+        command: "-l /config.php"
+        volumes:
+          - "{{ nms_config_dir }}/librenms_config.php:/config.php:ro"
+      register: librenms_cfg_check
+  always:
+    - name: Validation output
+      debug:
+        msg: "{{ librenms_cfg_check.container.Output.split('\n') }}"
+
+- name: Additional config stat
+  stat:
+    get_checksum: true
+    path: "{{ nms_config_dir }}/librenms_config.php"
+  register: nms_librenms_additional_config_hash
+
+- name: Copy compose definition
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ nms_config_dir }}/compose/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - src: docker-compose.yml.j2
+      dest: "docker-compose.yml"
+
+- name: Deploy LibreNMS
+  docker_compose:
+    project_src: "{{ nms_config_dir }}/compose"
+    project_name: "{{ nms_deploy_name }}"
+    build: true
