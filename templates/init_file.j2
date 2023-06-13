@@ -1,0 +1,4 @@
+
+use mysql;
+ALTER USER '{{ nms_librenms_mysql_user }}'@'%' IDENTIFIED BY '{{ nms_librenms_mysql_password }}';
+FLUSH PRIVILEGES;

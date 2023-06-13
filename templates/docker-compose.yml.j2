@@ -13,6 +13,7 @@ services:
       - "--collation-server=utf8mb4_unicode_ci"
     volumes:
       - "{{ nms_data_librenms_db }}:/var/lib/mysql"
+      - "{{ nms_config_dir }}/init_file:/etc/mysql/init_file"
     environment:
       - "TZ={{ nms_timezone }}"
       - "PUID={{ nms_user_id }}"

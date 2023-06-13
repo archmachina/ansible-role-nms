@@ -80,6 +80,14 @@
     - src: docker-compose.yml.j2
       dest: "docker-compose.yml"
 
+- name: Copy mariadb init_file
+  template:
+    src: "init_file.j2"
+    dest: "{{ nms_config_dir }}/init_file"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+
 - name: Deploy LibreNMS
   docker_compose:
     project_src: "{{ nms_config_dir }}/compose"
