@@ -35,7 +35,8 @@ nms_weathermap_enable: 'false'
 nms_snmp_community: public
 nms_timezone: UTC
 
-nms_username: "nms"
+nms_user: "nms"
+nms_group: "nms"
 
 nms_librenms_mysql_database: "librenms"
 nms_librenms_mysql_user: "librenms"

@@ -3,13 +3,19 @@
 - name: NMS User
   user:
     state: present
-    name: "{{ nms_username }}"
+    name: "{{ nms_user }}"
   register: nms_user_state
+
+- name: NMS Group
+  group:
+    state: present
+    name: "{{ nms_group }}"
+  register: nms_group_state
 
 - name: Record NMS IDs
   set_fact:
     nms_user_id: "{{ nms_user_state.uid }}"
-    nms_group_id: "{{ nms_user_state.group }}"
+    nms_group_id: "{{ nms_group_state.gid }}"
 
 - name: NMS data directories
   file:
