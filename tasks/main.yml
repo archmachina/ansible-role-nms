@@ -88,6 +88,14 @@
     group: "{{ nms_group_id }}"
     mode: "0600"
 
+- name: Oxidized Directory
+  file:
+    state: directory
+    path: "{{ nms_config_dir }}/oxidized"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0755"
+
 - name: Deploy LibreNMS
   docker_compose:
     project_src: "{{ nms_config_dir }}/compose"
