@@ -4,7 +4,6 @@ services:
   librenms_db:
     build:
       context: ./mariadb
-    container_name: librenms_db
     command:
       - "mysqld"
       - "--innodb-file-per-table=1"
@@ -31,7 +30,6 @@ services:
   librenms_redis:
     build:
       context: ./redis
-    container_name: librenms_redis
     environment:
       - "TZ={{ nms_timezone }}"
     deploy:
@@ -42,7 +40,6 @@ services:
   librenms_main:
     build:
       context: ./librenms
-    container_name: librenms
     hostname: librenms
     cap_add:
       - NET_ADMIN
@@ -76,7 +73,6 @@ services:
   librenms_dispatcher:
     build:
       context: ./librenms
-    container_name: librenms_dispatcher
     hostname: librenms-dispatcher
     cap_add:
       - NET_ADMIN
