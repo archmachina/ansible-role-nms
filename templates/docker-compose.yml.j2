@@ -101,3 +101,14 @@ services:
       restart_policy:
         condition: any
         delay: 10s
+
+  oxidized:
+    build:
+      context: ./oxidized
+    container_name: oxidized
+    restart: always
+    hostname: oxidized
+    volumes:
+      - "{{ nms_config_dir }}/oxidized:/home/oxidized/.config/oxidized"
+    environment:
+      CONFIG_RELOAD_INTERVAL: 600
