@@ -26,6 +26,8 @@ services:
         condition: any
         delay: 10s
     user: "{{ nms_user_id }}"
+    labels:
+      nms.additional_config.init_file: "{{ nms_config_files_checksums['init_file'] }}"
 
   librenms_redis:
     build:
@@ -48,12 +50,19 @@ services:
       - target: 8000
         published: 8000
         protocol: tcp
+      - target: 8443
+        published: 8443
+        protocol: tcp
     depends_on:
       - librenms_db
       - librenms_redis
     volumes:
       - "{{ nms_data_librenms_data }}:/data"
-      - "{{ nms_config_dir }}/librenms_config.php:/data/config/librenms_config.php"
+      - "{{ nms_config_dir }}/config/librenms_config.php:/data/config/librenms_config.php"
+      - "{{ nms_config_dir }}/config/librenms-http.conf:/etc/nginx/sites/librenms-http.conf"
+      - "{{ nms_config_dir }}/config/librenms-https.conf:/etc/nginx/sites/librenms-https.conf"
+      - "{{ nms_config_dir }}/config/nms.crt:/etc/nginx/librenms.crt"
+      - "{{ nms_config_dir }}/config/nms.key:/etc/nginx/librenms.key"
     environment:
       - "TZ={{ nms_timezone }}"
       - "PUID={{ nms_user_id }}"
@@ -63,8 +72,16 @@ services:
       - "DB_USER={{ nms_librenms_mysql_user }}"
       - "DB_PASSWORD={{ nms_librenms_mysql_password }}"
       - "DB_TIMEOUT=60"
+{% if nms_librenms_app_url | default('') != '' %}
+      - "APP_URL={{ nms_librenms_app_url }}"
+      - "BASE_URL={{ nms_librenms_app_url }}"
+{% endif %}
     labels:
-      nms.librenms.additional_config.md5sum: "{{ nms_librenms_additional_config_hash.stat.checksum }}"
+      nms.additional_config.librenms_config_php: "{{ nms_config_files_checksums['librenms_config.php'] }}"
+      nms.additional_config.librenms_http_conf: "{{ nms_config_files_checksums['librenms-http.conf'] }}"
+      nms.additional_config.librenms_https_conf: "{{ nms_config_files_checksums['librenms-https.conf'] }}"
+      nms.additional_config.nms_crt: "{{ nms_config_files_checksums['nms.crt'] }}"
+      nms.additional_config.nms_key: "{{ nms_config_files_checksums['nms.key'] }}"
     deploy:
       restart_policy:
         condition: any
@@ -78,11 +95,10 @@ services:
       - NET_ADMIN
       - NET_RAW
     depends_on:
-      - librenms_main
       - librenms_redis
     volumes:
       - "{{ nms_data_librenms_data }}:/data"
-      - "{{ nms_config_dir }}/librenms_config.php:/data/config/librenms_config.php"
+      - "{{ nms_config_dir }}/config/librenms_config.php:/data/config/librenms_config.php"
     environment:
       - "TZ={{ nms_timezone }}"
       - "PUID={{ nms_user_id }}"
@@ -95,20 +111,23 @@ services:
       - "DISPATCHER_NODE_ID=dispatcher1"
       - "SIDECAR_DISPATCHER=1"
       - "REDIS_HOST=librenms_redis"
+{% if nms_librenms_app_url | default('') != '' %}
+      - "APP_URL={{ nms_librenms_app_url }}"
+      - "BASE_URL={{ nms_librenms_app_url }}"
+{% endif %}
     labels:
-      nms.librenms.additional_config.md5sum: "{{ nms_librenms_additional_config_hash.stat.checksum }}"
+      nms.additional_config.librenms_config_php: "{{ nms_config_files_checksums['librenms_config.php'] }}"
     deploy:
       restart_policy:
         condition: any
         delay: 10s
 
-  oxidized:
-    build:
-      context: ./oxidized
-    container_name: oxidized
-    restart: always
-    hostname: oxidized
-    volumes:
-      - "{{ nms_config_dir }}/oxidized:/home/oxidized/.config/oxidized"
-    environment:
-      CONFIG_RELOAD_INTERVAL: 600
+#  oxidized:
+#    build:
+#      context: ./oxidized
+#    restart: always
+#    hostname: oxidized
+#    volumes:
+#      - "{{ nms_config_dir }}/oxidized:/home/oxidized/.config/oxidized"
+#    environment:
+#      CONFIG_RELOAD_INTERVAL: 600

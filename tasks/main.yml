@@ -1,5 +1,16 @@
 ---
 
+#
+# Setup
+
+# Normalise the nms_config_dir var (Remove trailing slash)
+- name: Update nms_config_dir
+  set_fact:
+    nms_config_dir: "{{ nms_config_dir | dirname }}"
+
+#
+# NMS user definitions
+
 - name: NMS User
   user:
     state: present
@@ -17,6 +28,9 @@
     nms_user_id: "{{ nms_user_state.uid }}"
     nms_group_id: "{{ nms_group_state.gid }}"
 
+#
+# NMS Data Directories
+
 - name: NMS data directories
   file:
     state: directory
@@ -28,11 +42,17 @@
     - "{{ nms_data_librenms_data }}"
     - "{{ nms_data_librenms_db }}"
 
-- name: Compose directory
+#
+# Config files and dirs
+
+- name: Config Dirs
   file:
-    path: "{{ nms_config_dir }}/compose"
+    path: "{{ nms_config_dir }}/{{ item }}"
     state: directory
     mode: "0700"
+  loop:
+    - compose
+    - config
 
 - name: Copy compose files
   copy:
@@ -40,16 +60,54 @@
     dest: "{{ nms_config_dir }}/compose"
     mode: "0600"
 
-- name: Copy librenms additional config
-  copy:
-    content: |
-      <?php
-      {{ nms_librenms_additional_config }}
-      ?>
-    dest: "{{ nms_config_dir }}/librenms_config.php"
+- name: Copy config templates
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ nms_config_dir }}/config/{{ item | basename | replace('.j2', '') }}"
     owner: "{{ nms_user_id }}"
     group: "{{ nms_group_id }}"
     mode: "0600"
+  register: nms_config_files
+  with_fileglob:
+    - "templates/config/*.j2"
+
+- name: Copy certificates
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+  no_log: true
+  loop:
+    - content: "{{ nms_certificate }}"
+      dest: "{{ nms_config_dir }}/config/nms.crt"
+    - content: "{{ nms_certificate_key }}"
+      dest: "{{ nms_config_dir }}/config/nms.key"
+
+#
+# Build checksum dictionary
+
+- name: Find config files
+  ansible.builtin.find:
+    file_type: file
+    recurse: false
+    get_checksum: true
+    path: "{{ nms_config_dir }}/config/"
+  register: nms_config_files_find
+
+- name: Extract checksums
+  loop: "{{ nms_config_files_find.files }}"
+  set_fact:
+    nms_config_files_checksums: >-
+      {{ (nms_config_files_checksums | default([])) + [ { 'key': (item.path | basename), 'value': item.checksum } ] }}
+
+- name: Checksum dictionary
+  set_fact:
+    nms_config_files_checksums: "{{ nms_config_files_checksums | items2dict }}"
+
+#
+# LibreNMS custom configuration validation
 
 - block:
     - name: Validate additional config
@@ -64,43 +122,21 @@
         entrypoint: "/usr/local/bin/php"
         command: "-l /config.php"
         volumes:
-          - "{{ nms_config_dir }}/librenms_config.php:/config.php:ro"
+          - "{{ nms_config_dir }}/config/librenms_config.php:/config.php:ro"
       register: librenms_cfg_check
   always:
     - name: Validation output
       debug:
         msg: "{{ librenms_cfg_check.container.Output.split('\n') }}"
 
-- name: Additional config stat
-  stat:
-    get_checksum: true
-    path: "{{ nms_config_dir }}/librenms_config.php"
-  register: nms_librenms_additional_config_hash
+#
+# Docker Compose config and deploy
 
 - name: Copy compose definition
-  template:
-    src: "{{ item.src }}"
-    dest: "{{ nms_config_dir }}/compose/{{ item.dest }}"
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nms_config_dir }}/compose/docker-compose.yml"
     mode: "0600"
-  loop:
-    - src: docker-compose.yml.j2
-      dest: "docker-compose.yml"
-
-- name: Copy mariadb init_file
-  template:
-    src: "init_file.j2"
-    dest: "{{ nms_config_dir }}/init_file"
-    owner: "{{ nms_user_id }}"
-    group: "{{ nms_group_id }}"
-    mode: "0600"
-
-- name: Oxidized Directory
-  file:
-    state: directory
-    path: "{{ nms_config_dir }}/oxidized"
-    owner: "{{ nms_user_id }}"
-    group: "{{ nms_group_id }}"
-    mode: "0755"
 
 - name: Deploy LibreNMS
   docker_compose:

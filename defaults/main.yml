@@ -48,3 +48,6 @@ nms_deploy_name: "nms"
 # nms_data_librenms_data: "/volume1/librenms_data"
 
 nms_config_dir: /etc/nms/
+
+nms_certificate: ""
+nms_certificate_key: ""
