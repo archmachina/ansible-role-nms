@@ -48,10 +48,10 @@ services:
       - NET_RAW
     ports:
       - target: 8000
-        published: 8000
+        published: {{ nms_librenms_http_port }}
         protocol: tcp
       - target: 8443
-        published: 8443
+        published: {{ nms_librenms_https_port }}
         protocol: tcp
     depends_on:
       - librenms_db
