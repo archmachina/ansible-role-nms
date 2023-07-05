@@ -1,1 +1,1 @@
-FROM oxidized/oxidized:0.29.1-7-g91994e9
+FROM archmachina/oxidized:0.3.0-rc3

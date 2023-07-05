@@ -132,3 +132,58 @@ nms_librenms_nginx_https_conf: |
           deny all;
       }
   }
+
+nms_oxidized_config: |
+  ---
+  username: username
+  password: password
+  model: cisco
+  resolve_dns: false
+  interval: 3600
+  use_syslog: false
+  debug: false
+  threads: 30
+  use_max_threads: false
+  timeout: 120
+  retries: 3
+  prompt: !ruby/regexp /^([\w.@-]+[#>]\s?)$/
+  rest: 0.0.0.0:8888
+  next_adds_job: false
+  vars: {}
+  groups: {}
+  group_map: {}
+  models: {}
+  pid: "~/pid"
+  crash:
+    directory: "~/.config/oxidized/crashes"
+    hostnames: false
+  stats:
+    history_size: 10
+  input:
+    default: ssh, telnet
+    debug: false
+    ssh:
+      secure: false
+    ftp:
+      passive: true
+    utf8_encoded: true
+  output:
+    default: git
+    git:
+      user: oxidized
+      email: oxidized@localhost
+      repo: "~/data/store.git"
+  source:
+    default: http
+    debug: false
+    http:
+      url: http://librenms_main:8000/api/v0/oxidized
+      map:
+        name: hostname
+        model: os
+        group: group
+      headers:
+        X-Auth-Token: 'xxxxxxxx'
+  model_map:
+    juniper: junos
+    cisco: ios
