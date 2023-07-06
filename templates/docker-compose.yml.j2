@@ -122,12 +122,15 @@ services:
         condition: any
         delay: 10s
 
-#  oxidized:
-#    build:
-#      context: ./oxidized
-#    restart: always
-#    hostname: oxidized
-#    volumes:
-#      - "{{ nms_config_dir }}/oxidized:/home/oxidized/.config/oxidized"
-#    environment:
-#      CONFIG_RELOAD_INTERVAL: 600
+  oxidized:
+    build:
+      context: ./oxidized
+    restart: always
+    environment:
+      - PUID={{ nms_user_id }}
+      - PGID={{ nms_group_id }}
+    volumes:
+      - "{{ nms_data_oxidized_data }}:/work/data"
+      - "{{ nms_config_dir }}/config/oxidized-config:/work/config"
+    labels:
+      nms.additional_config.oxidized-config: "{{ nms_config_files_checksums['oxidized-config'] }}"

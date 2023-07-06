@@ -41,6 +41,7 @@
   loop:
     - "{{ nms_data_librenms_data }}"
     - "{{ nms_data_librenms_db }}"
+    - "{{ nms_data_oxidized_data }}"
 
 #
 # Config files and dirs
