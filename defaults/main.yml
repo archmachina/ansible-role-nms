@@ -236,7 +236,9 @@ nms_haproxy_config: |
     hold obsolete 30s
 
   userlist oxidized_credentials
-    user admin insecure-password {{ vault_nms_oxidized_password }}
+  {% for cred in nms_oxidized_web_credentials|default([]) %}
+    user {{ cred.user }} {{ cred.type }} {{ cred.password }}
+  {% endfor %}
 
   defaults
     log global
@@ -251,13 +253,13 @@ nms_haproxy_config: |
 
   frontend oxidized-http-frontend
     bind *:8888
-    use_backend oxidized-http-backend
     http-request auth unless { http_auth(oxidized_credentials) }
+    use_backend oxidized-http-backend
 
   frontend oxidized-https-frontend
     bind *:9000 ssl crt /etc/ssl/nms
-    use_backend oxidized-http-backend
     http-request auth unless { http_auth(oxidized_credentials) }
+    use_backend oxidized-http-backend
 
   backend oxidized-http-backend
     default-server check maxconn 200 verify none
@@ -301,3 +303,5 @@ nms_cert_subject_alt_name:
 nms_librenms_app_url: ""
 
 nms_librenms_oxidized_token: ''
+
+nms_oxidized_web_credentials: []
