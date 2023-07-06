@@ -1,1 +1,1 @@
-FROM archmachina/oxidized:0.3.0-rc3
+FROM archmachina/oxidized:0.3.0-rc4

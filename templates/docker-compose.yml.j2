@@ -126,11 +126,9 @@ services:
     build:
       context: ./oxidized
     restart: always
-    ports:
-      - target: 8888
-        published: 8888
-        protocol: tcp
-    user: "{{ nms_user_id }}:{{ nms_group_id }}"
+    environment:
+      - PUID={{ nms_user_id }}
+      - PGID={{ nms_group_id }}
     volumes:
       - "{{ nms_data_oxidized_data }}:/work/data"
       - "{{ nms_config_dir }}/config/oxidized-config:/work/config"
