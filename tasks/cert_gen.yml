@@ -1,0 +1,45 @@
+---
+
+- name: NMS private key
+  community.crypto.openssl_privatekey:
+    path: "{{ nms_config_dir }}/config/nms.key"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+
+- name: NMS CSR
+  community.crypto.openssl_csr:
+    privatekey_path: "{{ nms_config_dir }}/config/nms.key"
+    path: "{{ nms_config_dir }}/config/nms.csr"
+    common_name: "{{ nms_cert_common_name }}"
+    subject_alt_name: "{{ nms_cert_subject_alt_name }}"
+    organization_name: "{{ nms_cert_org_name }}"
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+
+- name: NMS Cert
+  community.crypto.x509_certificate:
+    csr_path: "{{ nms_config_dir }}/config/nms.csr"
+    path: "{{ nms_config_dir }}/config/nms.crt"
+    privatekey_path: "{{ nms_config_dir }}/config/nms.key"
+    provider: selfsigned
+    owner: "{{ nms_user_id }}"
+    group: "{{ nms_group_id }}"
+    mode: "0600"
+
+- name: Read private key
+  ansible.builtin.command:
+    cmd: "cat {{ nms_config_dir }}/config/nms.key"
+  register: nms_certificate_key
+  no_log: true
+
+- name: Read certificate
+  ansible.builtin.command:
+    cmd: "cat {{ nms_config_dir }}/config/nms.crt"
+  register: nms_certificate
+
+- name: Update certificate variables
+  ansible.builtin.set_fact:
+    nms_certificate_key: "{{ nms_certificate_key.stdout }}\n"
+    nms_certificate: "{{ nms_certificate.stdout }}\n"

@@ -72,6 +72,10 @@
   with_fileglob:
     - "templates/config/*.j2"
 
+- name: Certificate Generation
+  when: nms_certificate|default('') == '' or nms_certificate_key|default('') == ''
+  include_tasks: cert_gen.yml
+
 - name: Copy certificates
   ansible.builtin.copy:
     content: "{{ item.content }}"

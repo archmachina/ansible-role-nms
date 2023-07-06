@@ -29,7 +29,37 @@ nms_librenms_env_proc:
   LIBRENMS_WEATHERMAP: "{{ nms_weathermap_enable }}"
   LIBRENMS_WEATHERMAP_SCHEDULE: "*/5 * * * *"
 
-nms_librenms_additional_config: ""
+nms_librenms_additional_config: |
+  # Discovery
+  $config['nets'] = array("192.168.0.0/24");
+  $config['discovery_by_ip'] = 1;
+  $config['discovery_modules']['arp-table'] = 1;
+  $config['discovery_modules']['discovery-arp'] = 1;
+  $config['discovery_modules']['discovery-protocols'] = 1;
+  $config['discovery_modules']['entity-physical'] = 1;
+  $config['discovery_modules']['entity-state'] = 1;
+  $config['discovery_modules']['fdb-table'] = 1;
+  $config['discovery_modules']['hr-device'] = 1;
+  $config['discovery_modules']['ipv4-addresses'] = 1;
+  $config['discovery_modules']['ipv6-addresses'] = 1;
+
+  # Poller Configuration
+  $config['poller_modules']['os'] = 1;
+  $config['poller_modules']['availability'] = 1;
+  $config['poller_modules']['ipSystemStats'] = 1;
+  $config['poller_modules']['ports'] = 1;
+
+  # SNMP Configuration
+  $config['snmp']['community'] = array("public");
+
+  # Oxidized Configuration
+  $config['oxidized']['enabled'] = True;
+  $config['oxidized']['url'] = "http://oxidized:8888";
+  $config['oxidized']['features']['versioning'] = true;
+  $config['oxidized']['group_support'] = true;
+  $config['oxidized']['default_group'] = "default";
+  $config['oxidized']['reload_nodes'] = true;
+
 
 nms_weathermap_enable: 'false'
 nms_snmp_community: public
@@ -40,20 +70,23 @@ nms_group: "nms"
 
 nms_librenms_mysql_database: "librenms"
 nms_librenms_mysql_user: "librenms"
-# nms_librenms_mysql_password: ""
+nms_librenms_mysql_password: "{{ undef(hint='MySQL password must be defined')}}"
 
 nms_deploy_name: "nms"
 
-# nms_data_librenms_db: "/volume1/librenms_db"
-# nms_data_librenms_data: "/volume1/librenms_data"
+nms_data_librenms_db: "{{ undef(hint='LibreNMS DB location must be defined')}}"
+nms_data_librenms_data: "{{ undef(hint='LibreNMS data location must be defined')}}"
+nms_data_oxidized_data: "{{ undef(hint='Oxidized data location must be defined') }}"
 
 nms_config_dir: /etc/nms/
 
 nms_certificate: ""
 nms_certificate_key: ""
 
-nms_librenms_http_port: 8000
+nms_librenms_http_port: ''
 nms_librenms_https_port: 8443
+nms_oxidized_http_port: ''
+nms_oxidized_https_port: 9000
 
 nms_librenms_nginx_http_conf: |
   server {
@@ -135,8 +168,8 @@ nms_librenms_nginx_https_conf: |
 
 nms_oxidized_config: |
   ---
-  username: username
-  password: password
+  username: "{{ nms_switch_username }}"
+  password: "{{ nms_switch_password }}"
   model: cisco
   resolve_dns: false
   interval: 3600
@@ -144,7 +177,7 @@ nms_oxidized_config: |
   debug: false
   threads: 30
   use_max_threads: false
-  timeout: 120
+  timeout: 60
   retries: 3
   prompt: !ruby/regexp /^([\w.@-]+[#>]\s?)$/
   rest: 0.0.0.0:8888
@@ -183,7 +216,88 @@ nms_oxidized_config: |
         model: os
         group: group
       headers:
-        X-Auth-Token: 'xxxxxxxx'
+        X-Auth-Token: '{{ nms_librenms_oxidized_token }}'
   model_map:
     juniper: junos
     cisco: ios
+
+nms_haproxy_config: |
+  global
+    ssl-default-bind-options ssl-min-ver TLSv1.2
+    log stdout format rfc3164 daemon debug
+
+  resolvers default-resolver
+    parse-resolv-conf
+    hold valid 10s
+    hold other 30s
+    hold refused 30s
+    hold nx 30s
+    hold timeout 30s
+    hold obsolete 30s
+
+  userlist oxidized_credentials
+    user admin insecure-password {{ vault_nms_oxidized_password }}
+
+  defaults
+    log global
+    maxconn 100
+    timeout connect 10s
+    timeout client 30s
+    timeout server 30s
+    mode http
+    option httplog
+    default-server init-addr last,libc,none inter 30s fall 2 rise 2 resolvers default-resolver
+    option forwardfor
+
+  frontend oxidized-http-frontend
+    bind *:8888
+    use_backend oxidized-http-backend
+    http-request auth unless { http_auth(oxidized_credentials) }
+
+  frontend oxidized-https-frontend
+    bind *:9000 ssl crt /etc/ssl/nms
+    use_backend oxidized-http-backend
+    http-request auth unless { http_auth(oxidized_credentials) }
+
+  backend oxidized-http-backend
+    default-server check maxconn 200 verify none
+    server oxidized oxidized:8888
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    http-request set-header X-Forwarded-Proto http if !{ ssl_fc }
+
+  backend oxidized-https-backend
+    default-server check maxconn 200 verify none
+    server oxidized oxidized:8888
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    http-request set-header X-Forwarded-Proto http if !{ ssl_fc }
+    http-request redirect scheme https unless { ssl_fc }
+
+  frontend librenms-http-frontend
+    bind *:8000
+    use_backend librenms-http-backend
+
+  frontend librenms-https-frontend
+    bind *:8443 ssl crt /etc/ssl/nms
+    use_backend librenms-https-backend
+
+  backend librenms-http-backend
+    default-server check maxconn 200 verify none
+    server librenms librenms_main:8000
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    http-request set-header X-Forwarded-Proto http if !{ ssl_fc }
+
+  backend librenms-https-backend
+    default-server check maxconn 200 verify none
+    server librenms librenms_main:8443 ssl
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    http-request set-header X-Forwarded-Proto http if !{ ssl_fc }
+    http-request redirect scheme https unless { ssl_fc }
+
+nms_cert_common_name: "NMS"
+nms_cert_org_name: "NMS"
+nms_cert_subject_alt_name:
+  - "DNS:nms"
+
+nms_librenms_app_url: ""
+
+nms_librenms_oxidized_token: ''

@@ -12,7 +12,7 @@ services:
       - "--collation-server=utf8mb4_unicode_ci"
     volumes:
       - "{{ nms_data_librenms_db }}:/var/lib/mysql"
-      - "{{ nms_config_dir }}/init_file:/etc/mysql/init_file"
+      - "{{ nms_config_dir }}/config/init_file:/etc/mysql/init_file"
     environment:
       - "TZ={{ nms_timezone }}"
       - "PUID={{ nms_user_id }}"
@@ -46,13 +46,6 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    ports:
-      - target: 8000
-        published: {{ nms_librenms_http_port }}
-        protocol: tcp
-      - target: 8443
-        published: {{ nms_librenms_https_port }}
-        protocol: tcp
     depends_on:
       - librenms_db
       - librenms_redis
@@ -95,6 +88,7 @@ services:
       - NET_ADMIN
       - NET_RAW
     depends_on:
+      - librenms_db
       - librenms_redis
     volumes:
       - "{{ nms_data_librenms_data }}:/data"
@@ -134,3 +128,41 @@ services:
       - "{{ nms_config_dir }}/config/oxidized-config:/work/config"
     labels:
       nms.additional_config.oxidized-config: "{{ nms_config_files_checksums['oxidized-config'] }}"
+
+  haproxy:
+    build:
+      context: ./haproxy
+    ports:
+{% if nms_librenms_http_port|default('') != '' %}
+      - target: 8000
+        published: {{ nms_librenms_http_port }}
+        protocol: tcp
+{% endif %}
+{% if nms_librenms_https_port|default('') != '' %}
+      - target: 8443
+        published: {{ nms_librenms_https_port }}
+        protocol: tcp
+{% endif %}
+{% if nms_oxidized_http_port|default('') != '' %}
+      - target: 8888
+        published: {{ nms_oxidized_http_port }}
+        protocol: tcp
+{% endif %}
+{% if nms_oxidized_https_port|default('') != '' %}
+      - target: 9000
+        published: {{ nms_oxidized_https_port }}
+        protocol: tcp
+{% endif %}
+    volumes:
+      - "{{ nms_config_dir }}/config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg"
+      - "{{ nms_config_dir }}/config/nms.key:/etc/ssl/nms.key"
+      - "{{ nms_config_dir }}/config/nms.crt:/etc/ssl/nms"
+    user: "{{ nms_user_id }}:{{ nms_user_id }}"
+    labels:
+      nms.haproxy.config: "{{ nms_config_files_checksums['haproxy.cfg'] }}"
+      nms.haproxy.nms_crt: "{{ nms_config_files_checksums['nms.crt'] }}"
+      nms.additional_config.nms_key: "{{ nms_config_files_checksums['nms.key'] }}"
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 10s
