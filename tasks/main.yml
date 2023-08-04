@@ -113,26 +113,20 @@
 
 #
 # LibreNMS custom configuration validation
-
-- block:
-    - name: Validate additional config
-      docker_container:
-        name: "librenms_cfg_check_{{ ansible_date_time.epoch }}"
-        image: php:latest
-        detach: false
-        # use the effective user id to make working with volume mounts and permissions easier
-        user: "{{ ansible_effective_user_id }}"
-        state: started
-        cleanup: true
-        entrypoint: "/usr/local/bin/php"
-        command: "-l /config.php"
-        volumes:
-          - "{{ nms_config_dir }}/config/librenms_config.php:/config.php:ro"
-      register: librenms_cfg_check
-  always:
-    - name: Validation output
-      debug:
-        msg: "{{ librenms_cfg_check.container.Output.split('\n') }}"
+- name: Validate additional config
+  docker_container:
+    name: "librenms_cfg_check_{{ ansible_date_time.epoch }}"
+    image: php:latest
+    detach: false
+    # use the effective user id to make working with volume mounts and permissions easier
+    user: "{{ ansible_effective_user_id }}"
+    state: started
+    cleanup: true
+    entrypoint: "/usr/local/bin/php"
+    command: "-l /config.php"
+    volumes:
+      - "{{ nms_config_dir }}/config/librenms_config.php:/config.php:ro"
+  register: librenms_cfg_check
 
 #
 # Docker Compose config and deploy
