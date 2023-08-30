@@ -6,6 +6,7 @@
     owner: "{{ nms_user_id }}"
     group: "{{ nms_group_id }}"
     mode: "0600"
+  no_log: true
 
 - name: NMS CSR
   community.crypto.openssl_csr:
