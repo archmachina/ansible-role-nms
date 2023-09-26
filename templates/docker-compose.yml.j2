@@ -27,6 +27,7 @@ services:
     user: "{{ nms_user_id }}"
     labels:
       nms.additional_config.init_file: "{{ nms_config_files_checksums['init_file'] }}"
+      nms.additional_config.init_file: "{{ nms_config_files_checksums['init_file.cnf'] }}"
 
   librenms_redis:
     build:
@@ -78,6 +79,7 @@ services:
       nms.additional_config.librenms_https_conf: "{{ nms_config_files_checksums['librenms-https.conf'] }}"
       nms.additional_config.nms_crt: "{{ nms_config_files_checksums['nms.crt'] }}"
       nms.additional_config.nms_key: "{{ nms_config_files_checksums['nms.key'] }}"
+      nms.additional_config.nms_key: "{{ nms_config_files_checksums['nginx.conf'] }}"
     deploy:
       restart_policy:
         condition: any
