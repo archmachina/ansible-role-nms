@@ -13,10 +13,9 @@ services:
     volumes:
       - "{{ nms_data_librenms_db }}:/var/lib/mysql"
       - "{{ nms_config_dir }}/config/init_file:/etc/mysql/init_file"
+      - "{{ nms_config_dir }}/config/init_file.cnf:/etc/mysql/mariadb.conf.d/80-init_file.cnf"
     environment:
       - "TZ={{ nms_timezone }}"
-      - "PUID={{ nms_user_id }}"
-      - "PGID={{ nms_group_id }}"
       - "MYSQL_DATABASE={{ nms_librenms_mysql_database }}"
       - "MYSQL_USER={{ nms_librenms_mysql_user }}"
       - "MYSQL_PASSWORD={{ nms_librenms_mysql_password }}"
@@ -56,6 +55,7 @@ services:
       - "{{ nms_config_dir }}/config/librenms-https.conf:/etc/nginx/sites/librenms-https.conf"
       - "{{ nms_config_dir }}/config/nms.crt:/etc/nginx/librenms.crt"
       - "{{ nms_config_dir }}/config/nms.key:/etc/nginx/librenms.key"
+      - "{{ nms_config_dir }}/config/nginx.conf:/tpls/etc/nginx/nginx.conf"
     environment:
       - "TZ={{ nms_timezone }}"
       - "PUID={{ nms_user_id }}"
@@ -69,6 +69,9 @@ services:
       - "APP_URL={{ nms_librenms_app_url }}"
       - "BASE_URL={{ nms_librenms_app_url }}"
 {% endif %}
+{% for item in nms_librenms_main_env | default([]) %}
+      - "{{ item.key }}={{ item.value }}"
+{% endfor %}
     labels:
       nms.additional_config.librenms_config_php: "{{ nms_config_files_checksums['librenms_config.php'] }}"
       nms.additional_config.librenms_http_conf: "{{ nms_config_files_checksums['librenms-http.conf'] }}"
@@ -109,6 +112,9 @@ services:
       - "APP_URL={{ nms_librenms_app_url }}"
       - "BASE_URL={{ nms_librenms_app_url }}"
 {% endif %}
+{% for item in nms_librenms_dispatcher_env | default([]) %}
+      - "{{ item.key }}={{ item.value }}"
+{% endfor %}
     labels:
       nms.additional_config.librenms_config_php: "{{ nms_config_files_checksums['librenms_config.php'] }}"
     deploy:

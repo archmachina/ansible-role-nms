@@ -305,3 +305,6 @@ nms_librenms_app_url: ""
 nms_librenms_oxidized_token: ''
 
 nms_oxidized_web_credentials: []
+
+nms_librenms_dispatcher_env: []
+nms_librenms_main_env: []
