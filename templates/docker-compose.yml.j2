@@ -14,6 +14,7 @@ services:
       - "{{ nms_data_librenms_db }}:/var/lib/mysql"
       - "{{ nms_config_dir }}/config/init_file:/etc/mysql/init_file"
       - "{{ nms_config_dir }}/config/init_file.cnf:/etc/mysql/mariadb.conf.d/80-init_file.cnf"
+      - "{{ nms_config_dir }}/config/config.cnf:/etc/mysql/mariadb.conf.d/90-config.cnf"
     environment:
       - "TZ={{ nms_timezone }}"
       - "MYSQL_DATABASE={{ nms_librenms_mysql_database }}"
@@ -28,6 +29,7 @@ services:
     labels:
       nms.additional_config.init_file: "{{ nms_config_files_checksums['init_file'] }}"
       nms.additional_config.init_file: "{{ nms_config_files_checksums['init_file.cnf'] }}"
+      nms.additional_config.init_file: "{{ nms_config_files_checksums['config.cnf'] }}"
 
   librenms_redis:
     build:

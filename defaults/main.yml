@@ -308,3 +308,7 @@ nms_oxidized_web_credentials: []
 
 nms_librenms_dispatcher_env: []
 nms_librenms_main_env: []
+
+nms_librenms_mariadb_config: |
+  [mysqld]
+  max_allowed_packet=64M
