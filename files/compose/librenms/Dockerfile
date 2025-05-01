@@ -1,1 +1,1 @@
-FROM librenms/librenms:23.11.0
+FROM librenms/librenms:25.4.0
